@@ -5,7 +5,7 @@ Genealogical Estimation of Variant Age (GEVA)
 This document describes the usage of the computational framework that we developed to estimate the age of the allele observed at a single locus in large-scale haplotype sample data.
 
 
-**Dating genomic variants and shared ancestry in population-scale sequencing data**
+**Dating genomic variants and shared ancestry in population-scale sequencing data**  
 *Patrick K. Albers and Gil McVean*
 doi: https://doi.org/10.1101/416610
 ###### See manuscript on bioRxiv: https://www.biorxiv.org/content/early/2018/09/13/416610
