@@ -6,7 +6,7 @@ This document describes the usage of the computational framework that we develop
 
 
 **Dating genomic variants and shared ancestry in population-scale sequencing data**  
-*Patrick K. Albers and Gil McVean*
+*Patrick K. Albers and Gil McVean*  
 doi: https://doi.org/10.1101/416610
 ###### See manuscript on bioRxiv: https://www.biorxiv.org/content/early/2018/09/13/416610
 
