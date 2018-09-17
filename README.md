@@ -5,9 +5,9 @@ Genealogical Estimation of Variant Age (GEVA)
 This document describes the usage of the computational framework that we developed to estimate the age of the allele observed at a single locus in large-scale haplotype sample data.
 
 
-**Dating genomic variants and shared ancestry in population-scale sequencing data**  
-*Patrick K. Albers and Gil McVean*  
-doi: https://doi.org/10.1101/416610
+> **Dating genomic variants and shared ancestry in population-scale sequencing data**  
+> *Patrick K. Albers and Gil McVean*  
+> doi: https://doi.org/10.1101/416610
 ###### See manuscript on bioRxiv: https://www.biorxiv.org/content/early/2018/09/13/416610
 
 The GEVA method is described in detail in the Supplementary Text.
@@ -56,10 +56,9 @@ or
 ./geva_v1beta --vcf DATA.vcf --map /path/to/GENETIC_MAP_FILE --out NAME
 ```
 The above creates the following files:
-
-- NAME.bin
-- NAME.marker.txt
-- NAME.sample.txt
+- `NAME.bin`
+- `NAME.marker.txt`
+- `NAME.sample.txt`
 
 where `NAME` is the prefix specified using either the `-o` or `--out` argument.
 Also, two additional files are created, a log file (`NAME.log`) and an error file (`NAME.err`). The latter is empty (0 bytes) if no errors or warnings were produced.
@@ -81,12 +80,12 @@ See the examples given below.
 
 ```
 # estimate allele age for the variant at position 12345678
-./geva_v1beta -i NAME.bin -o run1 --position 12345678 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva_v1beta -i NAME.bin -o RUN1 --position 12345678 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
 ```
 # estimate allele age multiple variants, listed in file BATCH.txt
-./geva_v1beta -i NAME.bin -o run1 --positions /path/to/BATCH.txt --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva_v1beta -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
 Note that the alternative allele is assumed to be the derived allele. The distribution of the derived allele in the sample is used to determine the pairing of haplotypes, i.e. to form concordant and discordant pairs.
@@ -95,10 +94,19 @@ The program samples up to a specified number of pairs from each group.
 To change the default sampling limits (100 for both groups), you can use the `--maxConcordant` and `--maxDiscordant` command line options.
 See example below.
 ```
-./geva_v1beta -i NAME.bin -o run1 --positions /path/to/BATCH.txt --maxConcordant 500 --maxDiscordant 500 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva_v1beta -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --maxConcordant 500 --maxDiscordant 500 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
+Again, use the `-o` or `--out` argument to specify the prefix for the files generated.
+
+
 ## Output
+By executing the program as described above, two result files are created (plus a `*.log` and a `*.err` file):
+- `RUN1.pairs.txt`
+- `RUN1.sites.txt`
+
+The **pairs** file contains the results of all pairwise analyses conducted to estimate the age of the variant(s) contained in the **sites** file.
+The format of each file type is described below.
 
 *(to be completed)*
 
