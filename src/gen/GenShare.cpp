@@ -180,7 +180,7 @@ size_t Share::select(const std::set<size_t> & position, const Grid::Data grid)
 		}
 	}
 	
-	printf("\n %lu \n", count);
+//	printf("\n %lu \n", count);
 	
 	if (count > 0)
 	{
@@ -206,7 +206,7 @@ size_t Share::select(const std::set<size_t> & position, const Grid::Data grid)
 		{
 			count += index->second.sites.size();
 		}
-		printf("\n %lu \n", count);
+//		printf("\n %lu \n", count);
 		count = 0;
 		
 		
@@ -225,7 +225,7 @@ size_t Share::select(const std::set<size_t> & position, const Grid::Data grid)
 		}
 	}
 	
-	printf("\n %lu \n", count);
+//	printf("\n %lu \n", count);
 	
 	this->clean_table();
 	

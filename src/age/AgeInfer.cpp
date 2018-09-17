@@ -42,7 +42,7 @@ void Pair::print_header(std::ostream & stream, const Param::Data param, const bo
 	else
 	{
 //		stream << " Fk SampleID0 Chr0 SampleID1 Chr1 Shared Missing Pass SegmentLHS SegmentRHS S_LHS S_RHS Shape Rate q25 q50 q75";
-		stream << " Fk SampleID0 Chr0 SampleID1 Chr1 Shared Pass SegmentLHS SegmentRHS Shape Rate";
+		stream << " SampleID0 Chr0 SampleID1 Chr1 Shared Pass SegmentLHS SegmentRHS Shape Rate";
 	}
 
 	stream << std::endl;
@@ -87,7 +87,7 @@ void Pair::print(std::ostream & stream, const Param::Data param, const bool full
 			const ChrType chr0 = this->pair.first.chromosome;
 			const ChrType chr1 = this->pair.second.chromosome;
 
-			stream << site_ptr->fk << ' ';
+//			stream << site_ptr->fk << ' ';
 
 			stream << this->pair.first.individual.value << ' ';
 
@@ -111,7 +111,7 @@ void Pair::print(std::ostream & stream, const Param::Data param, const bool full
 
 			stream << ((this->sharing) ? '1': '0') << ' ';
 
-			stream << std::fixed << std::setprecision(8) << this->missing << ' ';
+//			stream << std::fixed << std::setprecision(8) << this->missing << ' ';
 
 			stream << ((this->ccf[c].pass) ? '1': '0') << ' ';
 
@@ -1115,7 +1115,7 @@ void Site::print_header(std::ostream & stream, const Param::Data param, const bo
 	else
 	{
 //		stream << " Fk N_Shared N_Others PostMean PostMode PostMedian PostCI025 PostCI975 Robust Lower Upper";
-		stream << " N_Shared N_Others PostMean PostMode PostMedian";
+		stream << " N_Concordant N_Discordant PostMean PostMode PostMedian";
 	}
 
 	stream << std::endl;
