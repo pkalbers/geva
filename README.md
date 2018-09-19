@@ -108,6 +108,40 @@ By executing the program as described above, two result files are created (plus 
 The **pairs** file contains the results of all pairwise analyses conducted to estimate the age of the variant(s) contained in the **sites** file.
 The format of each file type is described below.
 
+### pairs
+The `*.pairs.txt` file has the following fields:
+- `MarkerID` : Focal variant; internal ID of the marker (as given in `*.marker.txt` file).
+- `Clock` : The clock model used; mutation clock (`M`), recombination clock (`R`), joint clock (`J`).
+- `SampleID0` : Internal ID of the first individual (diploid!) in the pair (as given in `*.sample.txt` file).
+- `Chr0` : Indicator of the haplotype in the first individual; either `0` or `1` (first or second haplotype).
+- `SampleID1` : Same as `SampleID0` but for the second individual in the pair.
+- `Chr1` : Same as `Chr0` but for the second individual in the pair.
+- `Shared` : Is pair concordant (`1`) or discordant (`0`) ?
+- `Pass` : Did this pair pass quality control, using a heuristic method for rejecting pairs?
+- `SegmentLHS` : Breakpoint detected (HMM) on *left* hand side from the focal site; given as internal ID of marker.
+- `SegmentRHS` : Breakpoint detected (HMM) on *right* hand side from the focal site; given as internal ID of marker.
+- `Shape` : Value of *shape* paramter; Gamma distirbution.
+- `Rate` : Value of *rate* paramter; Gamma distirbution.
+
+The *shape* and *rate* parameters are used to obtain a posterior distribution on the TMRCA of a given pair. Allele age is estimated from the composite posterior distribution, which combines the pairwise TMRCA posteriors available for a given focal variant.
+
+### sites
+The `*.sites.txt` file has the following fields:
+- `MarkerID` : Focal variant; internal ID of the marker (as given in `*.marker.txt` file).
+- `Clock` : The clock model used; mutation clock (`M`), recombination clock (`R`), joint clock (`J`).
+- `Filtered` : Was allele age computed before (`0`) or after (`1`) quality control (heuristic filtering of pairs)?
+- `N_Concordant` : The number of available concordant pairs (before or after filtering).
+- `N_Discordant` : The number of available discordant pairs (before or after filtering).
+- `PostMean` : The *mean* of the composite posterior distribution.
+- `PostMode` : The *mode* of the composite posterior distribution.
+- `PostMedian` : The *median* of the composite posterior distribution.
+
+Note that all coordinates refer to the internally used IDs that are given in the `*.marker.txt` and `*.sample.txt` files generated during compilation.  
+
+Several results are given for each focal variant; there is one allele age estimate for each clock model, first, based on all pairs analysed and, second, based on the set of pairs retained after quality control.
+However, the exact heuristic filtering algorithm used here differs from the one that we used for generating the results presented in the paper. We applied an external script to filter pairs in the `*.pairs.txt` file, from which we estimated allele age.  The script is available [...]
+
+
 *(to be completed)*
 
 
