@@ -139,13 +139,23 @@ The `*.sites.txt` file has the following fields:
 Note that all coordinates refer to the internally used IDs that are given in the `*.marker.txt` and `*.sample.txt` files generated during compilation.  
 
 Several results are given for each focal variant; there is one allele age estimate for each clock model, first, based on all pairs analysed and, second, based on the set of pairs retained after quality control.
-However, the exact heuristic filtering algorithm used here differs from the one that we used for generating the results presented in the paper. We applied an external script to filter pairs in the `*.pairs.txt` file, from which we estimated allele age.  The script is available [...]
+This is distinguished by the `Filtered` field in the `*.sites.txt` file, and by the `Pass` field in the `*.pairs.txt` file.
 
-
-*(to be completed)*
+However, the exact heuristic filtering algorithm used here differs from the one that we used for generating the results presented in the paper. We applied an external script to filter pairs in the `*.pairs.txt` file, from which we estimated allele age.  The script runs in R and is provided: `estimate.R`  
+To run this script, for example on the generated `RUN1.pairs.txt` file, execute on the command line
+```
+Rscript estimate.R /path/to/RUN1.pairs.txt 10000
+```
+where `10000` refers to the scaling parameter, Ne.  
+The above creates a new "sites" file, but now named `RUN1.sites2.txt`.
 
 
 ## Comments
+The GEVA framework, as it is currently implemented, has a few known bugs; listed below.
 
-*(to be completed)*
+- Estimating the age of the very first or the very last variant of a chromosome may produce `Segmentation fault` errors, sometimes.
+- The formation of concordant pairs may sometimes fail if there is no heterozygous state found in the sample for a given target variant.
+- Memory allocation grows exponentially with allele frequency.
+
+Due to the latter, it is highly recommended to keep batch files small, in the order of hundreds.
 
