@@ -7,19 +7,19 @@ This document describes the usage of the computational framework that we develop
 
 > **Dating genomic variants and shared ancestry in population-scale sequencing data**  
 > *Patrick K. Albers and Gil McVean*  
-> doi: https://doi.org/10.1101/416610
-###### See manuscript on bioRxiv: https://www.biorxiv.org/content/early/2018/09/13/416610
+> doi: https://doi.org/10.1371/journal.pbio.3000586
+###### PLoS Biology 18(1): e3000586
 
-The GEVA method is described in detail in the Supplementary Text.
+The GEVA method is described in detail in the Supplementary Texts.
 
 
 
 ### Compilation ...
 ... is straightforward. Simply type `make` on the command line and the program compiles.
-This generates a single executable called `geva_v1beta`.
+This generates a single executable called `geva`.
 You can use
 ```
-./geva_v1beta --help
+./geva --help
 ```
 to see a list of available command line options.
 
@@ -48,12 +48,12 @@ Source files that combine data from multiple chromosomes need to be divided firs
 To convert source file `DATA.vcf` (or `DATA.vcf.gz`) on the command line, use the examples provided below.
 ```
 # fixed recombination rate, without a genetic map
-./geva_v1beta --vcf DATA.vcf --rec 1e-8 --out NAME
+./geva --vcf DATA.vcf --rec 1e-8 --out NAME
 ```
 or
 ```
 # variable recombination rates, as provided through a genetic map
-./geva_v1beta --vcf DATA.vcf --map /path/to/GENETIC_MAP_FILE --out NAME
+./geva --vcf DATA.vcf --map /path/to/GENETIC_MAP_FILE --out NAME
 ```
 The above creates the following files:
 - `NAME.bin`
@@ -63,6 +63,23 @@ The above creates the following files:
 where `NAME` is the prefix specified using either the `-o` or `--out` argument.
 Also, two additional files are created, a log file (`NAME.log`) and an error file (`NAME.err`). The latter is empty (0 bytes) if no errors or warnings were produced.
 Note that `*.log` and `*.err` files are created in every run.
+
+
+Note that GEVA assumes that the reference allele represents the ancestral allelic state. However, because this is not always the case, the software provides the option to 'flip' reference and alternate alleles at variants for which the ancestral state is known. 
+This can be done using the `--AncAllele` command line argument during file conversion; for example:
+```
+# external information about the ancestral allelic state
+./geva --vcf DATA.vcf --map /path/to/GENETIC_MAP_FILE --out NAME --AncAllele /path/to/ANC_ALLELE_FILE
+```
+which expects a 3-column raw text file, containing the chromosome identifier (1st column), position (2nd), and the ancestral allele (3rd); without a header. This may look as follows:
+```
+2 	2000883 	G
+2 	2001005 	T
+2 	2001011 	C
+...
+```
+
+
 
 
 ## Execution
@@ -80,12 +97,12 @@ See the examples given below.
 
 ```
 # estimate allele age for the variant at position 12345678
-./geva_v1beta -i NAME.bin -o RUN1 --position 12345678 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva -i NAME.bin -o RUN1 --position 12345678 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
 ```
 # estimate allele age multiple variants, listed in file BATCH.txt
-./geva_v1beta -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
 Note that the alternative allele is assumed to be the derived allele. The distribution of the derived allele in the sample is used to determine the pairing of haplotypes, i.e. to form concordant and discordant pairs.
@@ -94,7 +111,7 @@ The program samples up to a specified number of pairs from each group.
 To change the default sampling limits (100 for both groups), you can use the `--maxConcordant` and `--maxDiscordant` command line options.
 See example below.
 ```
-./geva_v1beta -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --maxConcordant 500 --maxDiscordant 500 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
+./geva -i NAME.bin -o RUN1 --positions /path/to/BATCH.txt --maxConcordant 500 --maxDiscordant 500 --Ne 10000 --mut 1e-8 --hmm ./hmm/hmm_initial_probs.txt ./hmm/hmm_emission_probs.txt
 ```
 
 Again, use the `-o` or `--out` argument to specify the prefix for the files generated.
@@ -148,6 +165,7 @@ Rscript estimate.R /path/to/RUN1.pairs.txt 10000
 ```
 where `10000` refers to the scaling parameter, Ne.  
 The above creates a new "sites" file, but now named `RUN1.sites2.txt`.
+It is recommended to use this script instead of the results in the 'sites' file created by GEVA.
 
 
 ## Comments
@@ -155,6 +173,7 @@ The GEVA framework, as it is currently implemented, has a few known bugs; listed
 
 - Estimating the age of the very first or the very last variant of a chromosome may produce `Segmentation fault` errors, sometimes.
 - The formation of concordant pairs may sometimes fail if there is no heterozygous state found in the sample for a given target variant.
+- Some VCF files denote the chromosome using a 'chr' prefix. While this should be accepted in the current version, the determined chromosome may not always match correctly across additional input files, such as genetic map files. It is recommended to use the same formatting across all input files, but preferably without a 'chr' prefix. 
 - Memory allocation grows exponentially with allele frequency.
 
 Due to the latter, it is highly recommended to keep batch files small, in the order of hundreds.

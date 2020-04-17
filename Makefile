@@ -1,9 +1,9 @@
 CC := g++
 
-CFLAGS := -std=c++11 -Wno-unused-command-line-argument -O2 -march=native
+CFLAGS := -std=c++11 -Wno-unused-command-line-argument -O2 
 CCLIBS  := -lz -lpthread
 
-TARGET := geva_v1beta
+TARGET := geva
 
 SUBDIRS := $(shell find ./src/ -type d)
 INCDIRS := $(addprefix -I, $(SUBDIRS))
@@ -15,15 +15,13 @@ OBJECTS := $(patsubst %.cpp, %.o, $(SOURCES))
 all: $(TARGET)
 
 %.o: %.cpp
-	$(CC) $(CFLAGS) -flto $(INCDIRS) -c $< -o $@ $(CCLIBS)
+	$(CC) $(CFLAGS) $(INCDIRS) -c $< -o $@ $(CCLIBS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) -o $(TARGET) -flto $(CFLAGS) $(OBJECTS) $(CCLIBS)
+	$(CC) -o $(TARGET) $(CFLAGS) $(OBJECTS) $(CCLIBS)
 
 
 .PHONY: clean
 
 clean:
 	@rm -f $(OBJECTS) $(TARGET)
-
-

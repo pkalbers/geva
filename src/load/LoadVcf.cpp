@@ -136,10 +136,12 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 	size_t      pos = 0, last_pos = 0;
 	std::string label;
 	bool        ref = false, alt = false;
-	std::string allele;
+	
+	std::string allele_ref;
+	std::string allele_alt;
 	size_t count = 0;
 	
-	allele.reserve(256);
+	bool anc = false;
 	
 	Marker M;
 	
@@ -152,7 +154,21 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 		{
 			case 0: // CHROM
 			{
-				chr = field.convert<int>();
+				std::string tmp = field.str();
+				if (tmp.size() > 3 &&
+						(tmp[0] == 'c' || tmp[0] == 'C') &&
+						(tmp[1] == 'h' || tmp[1] == 'H') &&
+						(tmp[2] == 'r' || tmp[2] == 'R'))
+				{
+					char * ptr = field;;
+					char * err;
+					float  val = std::strtof(&ptr[3], &err);
+					if (*err != '\0')
+						throw std::invalid_argument("Cannot parse chromosome identifier");
+					chr = static_cast<int>(val);
+				}
+				else
+					chr = field.convert<int>();
 				
 				if (this->filter.chromosome != -1 && this->filter.chromosome != chr)
 				{
@@ -195,6 +211,12 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 					throw std::string("Invalid position on line " + std::to_string(line.number));
 				}
 				
+				if (this->has_ancestral)
+				{
+					if (this->ancestral[chr].count(pos) != 0)
+						anc = true;
+				}
+				
 				last_pos = pos;
 				break;
 			}
@@ -206,19 +228,21 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 			case 3: // REF
 			{
 				ref = (field.size() == 1);
-				allele += field.str();
+				allele_ref = field.str();
 				
 				if (this->filter.remove_missing && field[0] == '.')
 				{
 					return false;
 				}
+				if (allele_ref.find(',') != std::string::npos)
+					return false;
+				
 				break;
 			}
 			case 4: // ALT
 			{
 				alt = (field.size() == 1);
-				allele += ',';
-				allele += field.str();
+				allele_alt = field.str();
 				
 				if (this->filter.remove_missing && field[0] == '.')
 				{
@@ -228,6 +252,21 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 				{
 					return false;
 				}
+				if (allele_alt.find(',') != std::string::npos)
+					return false;
+				
+				if (anc)
+				{
+					std::string & allele_anc = this->ancestral[chr][pos];
+					if      (allele_ref == allele_anc) anc = false;
+					else if (allele_alt == allele_anc) anc = true; // flip
+					else {
+						if (this->filter.remove_unmatched_ancestral)
+							return false;
+						anc = false;
+					}
+				}
+				
 				break;
 			}
 			case 5: // QUAL
@@ -279,9 +318,15 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 						throw std::runtime_error("Invalid genotype on line " + std::to_string(line.number) + ", field " + std::to_string(g.number) + ":\n" + g.str());
 					}
 					
-					const char c0 = g[0];
-					const char c1 = g[2];
-					const bool ph = (g[1] == '|');
+					char c0 = g[0];
+					char c1 = g[2];
+					bool ph = (g[1] == '|');
+					
+					if (anc) // flip
+					{
+						c0 = (g[0] == '0')? '1': (g[0] == '1')? '0': g[0];
+						c1 = (g[2] == '0')? '1': (g[2] == '1')? '0': g[2];
+					}
 					
 					const gen_t gt = make_genotype(c0, c1, ph);
 					
@@ -322,7 +367,11 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 	M.label = std::move(label);
 	M.chromosome = chr;
 	M.position   = pos;
-	M.allele.parse(allele);
+	
+	if (anc)
+		M.allele.parse(allele_alt + "," + allele_ref); // flip
+	else
+		M.allele.parse(allele_ref + "," + allele_alt);
 	
 	
 	// Approximate rate and distance

@@ -155,12 +155,12 @@ bool LoadMap::parse_4_fields(int & chr, size_t & pos, double & rate, double & di
 				}
 				else
 				{
-					bool flag = true;
+					bool flag = false;
 					for (size_t i = 0, end = field.size(); i < end; ++i)
 					{
 						if (isalpha(field[i]))
 						{
-							flag = false;
+							flag = true;
 							break;
 						}
 					}

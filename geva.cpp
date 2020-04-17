@@ -60,6 +60,9 @@ int main(int argc, const char * argv[])
 	Command::Value< size_t >         input_lines("maxLines", "Number of lines to be buffered while processing input file (default: 500000)");
 	Command::Bool                    local_tmp_files("localTmpFiles", "Temporary files are stored in local directory when parsing input file");
 	Command::Array< std::string, 2 > input_hmm_file("hmm", "Hidden Markov Model, 2 input files: (1) empirical initial state and (2) emission probabilties");
+	Command::Value< std::string >    input_anc_file("AncAlleles", "File containing chromosome, position, and ancestral allele (no header, tab-separated)");
+	Command::Bool                    require_anc_match("removeUnmatchedAncestral", "Remove variants where the ancestral allele does not match ref/alt");
+	Command::Value< bool >           require_snp("onlySNP", "Remove non-SNP variants");
 	
 	// genomic position arguments
 	Command::Value< size_t >      share_position("position", "Target position");
@@ -100,6 +103,15 @@ int main(int argc, const char * argv[])
 			
 			// locally save tmp files
 			line.get(local_tmp_files, false, false);
+			
+			// ancestral alleles
+			line.get(input_anc_file, false);
+			
+			// remove unmatched ancestral alleles
+			line.get(require_anc_match, false, false);
+			
+			// require SNPs
+			line.get(require_snp, false, true); // default: only SNPs
 		}
 		else
 		{
@@ -177,7 +189,20 @@ int main(int argc, const char * argv[])
 			// switch between map rec rate or fixed rec rate
 			Gen::Map gmap = (input_map_file.good()) ? load_map(input_map_file): load_map(input_rec_rate);
 			
-			input_bin_file = load_vcf(input_vcf_file, gmap, output, input_lines, false, local_tmp_files);
+			// ancestral alleles
+			std::string amap;
+			if (input_anc_file.good())
+				amap = input_anc_file;
+			
+			input_bin_file = load_vcf(input_vcf_file,
+																gmap,
+																amap,
+																output,
+																input_lines,
+																false,
+																local_tmp_files,
+																require_anc_match,
+																require_snp);
 			
 			grid = load_bin(input_bin_file);
 			

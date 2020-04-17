@@ -6,6 +6,7 @@
 #define load_vcf_h
 
 
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -17,7 +18,42 @@
 #include "GenGrid.hpp"
 
 
-inline std::string load_vcf(const std::string & input, const Gen::Map & gmap, const std::string & outfile, const size_t & buffer_limit, const bool compress = false, const bool local_tmp = false)
+
+static void make_anc_allele_map(const std::string & filename, LoadVcf::AncAlleleMap & amap)
+{
+	std::ifstream file(filename);
+	std::string   line;
+	
+	while (std::getline(file, line))
+	{
+		int         chr = 0;
+		size_t      pos = 0;
+		std::string anc;
+		
+		std::istringstream iss(line);
+		
+		if (!(iss >> chr >> pos >> anc))
+		{
+			file.close();
+			throw std::runtime_error(std::string("Unable to read file:  ") + filename);
+		}
+		
+		amap[chr][pos] = anc;
+	}
+	
+	file.close();
+}
+
+
+inline std::string load_vcf(const std::string & input,
+														const Gen::Map & gmap,
+														const std::string & amap,
+														const std::string & outfile,
+														const size_t & buffer_limit,
+														const bool compress = false,
+														const bool local_tmp = false,
+														const bool require_anc_match = false,
+														const bool require_snp = true)
 //							const size_t chunk_beg = 0, const size_t chunk_end = 0)
 {
 	std::cout << "Loading variant data from VCF file to binary file" << std::endl << "<< " << input << std::endl;
@@ -39,6 +75,31 @@ inline std::string load_vcf(const std::string & input, const Gen::Map & gmap, co
 	{
 		Clock   time;
 		LoadVcf load(input); // reads sample vector
+		
+		if (!amap.empty())
+		{
+			make_anc_allele_map(amap, load.ancestral);
+			load.has_ancestral = true;
+			load.filter.remove_unmatched_ancestral = require_anc_match;
+			
+			std::cout << " Determine ancestral allelic states according to file:  " << amap << std::endl;
+			std::clog << " Determine ancestral allelic states according to file:  " << amap << std::endl;
+			
+			if (load.filter.remove_unmatched_ancestral)
+			{
+				std::cout << " Removing variants where the ancestral allele does not match given ref/alt alleles" << std::endl;
+				std::clog << " Removing variants where the ancestral allele does not match given ref/alt alleles" << std::endl;
+			}
+		}
+		else
+			load.has_ancestral = false;
+		
+		load.filter.require_snp = require_snp;
+		if (load.filter.require_snp)
+		{
+			std::cout << " Retaining only SNPs" << std::endl;
+			std::clog << " Retaining only SNPs" << std::endl;
+		}
 		
 		const size_t sample_size = load.sample.size();
 		const size_t buffer_size = static_cast<size_t>(static_cast<double>(sample_size * buffer_limit) / static_cast<double>(1024 * 1024 * sizeof(Gen::value_t)));

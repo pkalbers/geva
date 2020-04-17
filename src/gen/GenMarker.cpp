@@ -4,6 +4,8 @@
 
 #include "GenMarker.hpp"
 
+#include <cstring>
+
 
 using namespace Gen;
 
@@ -171,43 +173,55 @@ void Marker::Allele::parse(const std::string & raw)
 	// store formated string
 	if (this->value < 0)
 	{
-		std::vector<char> chunk(raw.size());
-		
-		chunk.reserve(256);
-		
-		std::string::const_iterator it, end = raw.cend();
-		
-		for (it = raw.cbegin(); it != end; ++it)
+		const char * p = raw.data();
+		const char * q = std::strchr(p, ',');
+		while (q)
 		{
-			const char c = *it;
+			if (q-p > 0)
+				this->cache.push_back(std::string(p, q-p));
 			
-			if (isalpha(c))
-			{
-				chunk.push_back(*it);
-				continue;
-			}
-			
-			if (*it == Marker::Allele::sep || it + 1 == end)
-			{
-				if (!chunk.empty())
-				{
-					this->cache.push_back( std::string(chunk.begin(), chunk.end()) );
-					chunk.clear();
-				}
-			}
+			p = q + 1;
+			q = std::strchr(p, ',');
 		}
+		this->cache.push_back(std::string(p));
+		
+//		std::vector<char> chunk(raw.size());
+//
+//		chunk.reserve(256);
+//
+//		std::string::const_iterator it, end = raw.cend();
+//
+//		for (it = raw.cbegin(); it != end; ++it)
+//		{
+//			const char c = *it;
+//
+//			if (isalpha(c))
+//			{
+//				chunk.push_back(*it);
+//				continue;
+//			}
+//
+//			if (*it == Marker::Allele::sep || it + 1 == end)
+//			{
+//				if (!chunk.empty())
+//				{
+//					this->cache.push_back( std::string(chunk.begin(), chunk.end()) );
+//					chunk.clear();
+//				}
+//			}
+//		}
 	}
 	
 	// re-evaluate if SNP
-	if (this->cache.size() == 2 && this->cache[0].size() == 1 && this->cache[1].size() == 1)
-	{
-		this->value = Marker::Allele::mask_snp(this->cache[0][0], this->cache[1][0]);
-		
-		if (this->value >= 0)
-		{
-			this->cache = cache_t(0);
-		}
-	}
+//	if (this->cache.size() == 2 && this->cache[0].size() == 1 && this->cache[1].size() == 1)
+//	{
+//		this->value = Marker::Allele::mask_snp(this->cache[0][0], this->cache[1][0]);
+//
+//		if (this->value >= 0)
+//		{
+//			this->cache = cache_t(0);
+//		}
+//	}
 }
 
 
@@ -265,7 +279,7 @@ std::string Marker::Allele::str() const
 		
 		if (size == 0)
 		{
-			return ".";
+			return "???";
 		}
 		
 		for (size_t i = 0; i < size; ++i)

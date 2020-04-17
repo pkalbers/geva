@@ -11,6 +11,7 @@
 #include <utility>
 #include <set>
 #include <sstream>
+#include <map>
 
 #include "Gen.hpp"
 #include "GenSample.hpp"
@@ -33,9 +34,13 @@ public:
 		size_t position_end          = 0;
 		bool   require_snp           = true;
 		bool   remove_missing        = true;
+		bool   remove_unmatched_ancestral = false;
 		int    require_qual_above    = -1;
 		bool   require_filter_pass   = false;
 	};
+	
+	// ancestral allelic state
+	using AncAlleleMap = std::map<int, std::map<size_t, std::string> >;
 	
 	
 	// construct
@@ -55,6 +60,9 @@ public:
 	Gen::Sample::Vector sample; // sample vector
 	
 	Filter filter; // filter settings
+	
+	AncAlleleMap ancestral;
+	bool     has_ancestral;
 	
 
 private:
