@@ -42,7 +42,7 @@ static void make_anc_allele_map(const std::string & filename, LoadVcf::AncAllele
 
 		if (chr_str.size() > 3 &&
 				(chr_str[0] == 'c' || chr_str[0] == 'C') &&
-				(chr_str[1] == 'h' || chr_str[1] == 'H')
+				(chr_str[1] == 'h' || chr_str[1] == 'H') &&
 				(chr_str[2] == 'r' || chr_str[2] == 'R'))
 		{
 			if (chr_str[3] == 'X')
