@@ -45,13 +45,13 @@
 int main(int argc, const char * argv[])
 {
 	Command::Line line(argc, argv);
-	
+
 	// common arguments
 	Command::Value< std::string >  output('o', "out", "Prefix for generated output files");
 	Command::Value< size_t >       thread('t', "treads", "Number of threads for parallel execution (default: 1)");
 	Command::Value< size_t >       buffer('b', "buffer", "Memory buffer, upper limit in megabytes (default: no limit)");
 	Command::Value< size_t >       seed("seed", "Set seed for random operations (may not be reproducible if t>1)");
-	
+
 	// input arguments
 	Command::Value< std::string >    input_bin_file('i', "input", "Pre-processed binary input file");
 	Command::Value< std::string >    input_vcf_file("vcf", "VCF input file (optionally GZIP compressed)");
@@ -63,73 +63,83 @@ int main(int argc, const char * argv[])
 	Command::Value< std::string >    input_anc_file("AncAlleles", "File containing chromosome, position, and ancestral allele (no header, tab-separated)");
 	Command::Bool                    require_anc_match("removeUnmatchedAncestral", "Remove variants where the ancestral allele does not match ref/alt");
 	Command::Value< bool >           require_snp("onlySNP", "Remove non-SNP variants");
-	
+
 	// genomic position arguments
 	Command::Value< size_t >      share_position("position", "Target position");
-	Command::Value< std::string > share_batch("positions", "Batch file containing target positions (any white-space separation)");
-	
+	Command::Value< std::string > share_positions("positions", "Batch file containing target positions (any white-space separation)");
+
+	// genomic marker arguments
+	Command::Value< size_t >      share_marker("marker", "Target marker ID");
+	Command::Value< std::string > share_markers("markers", "Batch file containing target marker IDs (any white-space separation)");
+
 	// age estimation parameters
 	Command::Value< size_t > effective_size("Ne", "Effective population size (default: 10000)");
 	Command::Value< double > mutation_rate("mut", "Mutation rate, per site per generation (default: 1e-08)");
 	Command::Value< size_t > age_limit_sharers("maxConcordant", "Maximim number of concordant pairs to be selected (default: 100)");
 	Command::Value< size_t > age_outgroup_size("maxDiscordant", "Maximum number of discordant pairs to be selected (default: 100)");
 	Command::Value< double > max_missing("maxMissing", "Maximum missing proportion of sites in HMM (default: 5%)");
-	
-	
+
+
 	// parse command line
 	try
 	{
 		line.parse();
-		
+
 		line.get(output, true);
 		line.get(thread, false, size_t(1));
 		line.get(buffer, false, std::numeric_limits<size_t>::max()); // default: all individuals
 		line.get(seed, false);
-		
-		
+
+
 		if (!line.get(input_bin_file, false)) // BIN
 		{
 			// VCF file
 			line.get(input_vcf_file, false);
-			
+
 			// genetic map
 			line.get(input_map_file, false);
-			
+
 			// optionally constant recombination rate
 			line.get(input_rec_rate, false, double(1e-08)); // default: 1e-08
-			
+
 			// number of lines read
 			line.get(input_lines, false, size_t(5e05)); // default: 0.5 million lines
-			
+
 			// locally save tmp files
 			line.get(local_tmp_files, false, false);
-			
+
 			// ancestral alleles
 			line.get(input_anc_file, false);
-			
+
 			// remove unmatched ancestral alleles
 			line.get(require_anc_match, false, false);
-			
+
 			// require SNPs
 			line.get(require_snp, false, true); // default: only SNPs
 		}
 		else
 		{
-			// target position
-			const bool do_position = line.get(share_position, false);
-			
-			// batch file of positions
-			const bool do_batch = line.get(share_batch, false);
-			
-			if (do_position && do_batch)
-				throw std::invalid_argument("Conflicting target position input");
-			
-			if (!do_position && !do_batch)
-				throw std::invalid_argument("Missing target position input");
-			
-			
+			// targets
+			const bool do_position  = line.get(share_position, false);
+			const bool do_positions = line.get(share_positions, false);
+			const bool do_marker    = line.get(share_marker, false);
+			const bool do_markers   = line.get(share_markers, false);
+
+			int target_inputs = 0;
+			if (do_position)  { ++target_inputs; }
+			if (do_positions) { ++target_inputs; }
+			if (do_marker)    { ++target_inputs; }
+			if (do_markers)   { ++target_inputs; }
+
+			if (target_inputs > 1)
+				throw std::invalid_argument("Conflicting target input");
+
+			if (target_inputs == 0)
+				throw std::invalid_argument("Missing target input");
+
+
 			line.get(input_hmm_file, true);
-			
+
 			line.get(effective_size, false, size_t(10000)); // default: 10000
 			line.get(mutation_rate, false, double(1e-08)); // default: 1e-08
 			line.get(max_missing, false, double(0.05)); // defaul: 5%
@@ -148,52 +158,52 @@ int main(int argc, const char * argv[])
 		std::cout << error.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-	
-	
+
+
 	// set seed
 	if (seed.good())
 	{
 		set_random_seed(seed);
 	}
-	
-	
+
+
 	// redirect log/err output
 	Redirect redirect_log(std::clog, output.value + ".log");
 	Redirect redirect_err(std::cerr, output.value + ".err");
-	
-	
-	
+
+
+
 	std::cout << std::endl;
 	std::cout << "Genealogical estimation of variant age (GEVA)" << std::endl;
 	std::cout << "(c) Patrick K. Albers" << std::endl;
 	std::cout << std::endl;
-	
-	
+
+
 	// print programme call to log
 	line.print(std::clog);
-	
-	
+
+
 	// begin timer
 	Clock runtime;
-	
-	
+
+
 	// main algorithm
 	try
 	{
 		// process input data
-		
+
 		Gen::Grid::Data grid;
-		
+
 		if (!input_bin_file.good())
 		{
 			// switch between map rec rate or fixed rec rate
 			Gen::Map gmap = (input_map_file.good()) ? load_map(input_map_file): load_map(input_rec_rate);
-			
+
 			// ancestral alleles
 			std::string amap;
 			if (input_anc_file.good())
 				amap = input_anc_file;
-			
+
 			input_bin_file = load_vcf(input_vcf_file,
 																gmap,
 																amap,
@@ -203,9 +213,9 @@ int main(int argc, const char * argv[])
 																local_tmp_files,
 																require_anc_match,
 																require_snp);
-			
+
 			grid = load_bin(input_bin_file);
-			
+
 			grid->print_sample(output.value + ".sample.txt");
 			grid->print_marker(output.value + ".marker.txt");
 		}
@@ -213,35 +223,41 @@ int main(int argc, const char * argv[])
 		{
 			grid = load_bin(input_bin_file);
 			grid->cache(buffer);
-			
+
 			Gen::Share::Data share = std::make_shared<Gen::Share>();
-			
+
 			if (share_position.good())
-				select_share(share, grid, share_position);
+				select_share(share, grid, share_position, false);
 			
-			if (share_batch.good())
-				select_share(share, grid, share_batch);
-			
-			
+			if (share_positions.good())
+				select_share(share, grid, share_positions, false);
+
+			if (share_marker.good())
+				select_share(share, grid, share_marker, true);
+
+			if (share_markers.good())
+				select_share(share, grid, share_markers, true);
+
+
 			// prepare hmm
-			
+
 			IBD::DetectMethod method = IBD::DETECT_HMM;
 			IBD::HMM::Model::Data hmm_model;
 			hmm_model = load_hmm(grid, input_hmm_file[0], input_hmm_file[1], effective_size, output);
-			
-			
+
+
 			// execute age estimation
-			
+
 			Age::Param::Data param = std::make_shared< Age::Param >(grid, effective_size, mutation_rate);
-			
+
 			if (age_limit_sharers.good())
 				param->limit_sharers = age_limit_sharers.value;
-			
+
 			if (age_outgroup_size.good())
 				param->outgroup_size = age_outgroup_size.value;
-			
+
 			param->threads = thread;
-			
+
 			infer_age(param, method, max_missing, output, false, false, share, grid, runtime, hmm_model, nullptr, thread);
 		}
 	}
@@ -250,14 +266,13 @@ int main(int argc, const char * argv[])
 		std::cout << error.what() << std::endl;
 		return EXIT_FAILURE;
 	}
-	
-	
+
+
 	std::cout << "This is the end!" << std::endl;
 	std::clog << "This is the end!" << std::endl;
 	runtime.print(std::cout);
 	runtime.print(std::clog);
-	
-	
+
+
 	return EXIT_SUCCESS;
 }
-
