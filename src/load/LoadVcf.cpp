@@ -25,14 +25,14 @@ LoadVcf::LoadVcf(const std::string & filename)
 		"FILTER",
 		"INFO",
 		"FORMAT" };
-	
+
 	this->stream.open(filename);
-	
+
 	// read first line
 	if (this->stream.next())
 	{
 		Reader::Current line = this->stream.line();
-		
+
 		// check format on first line
 		if (line.size() < 16 || std::string(line, 16) != "##fileformat=VCF")
 		{
@@ -43,13 +43,13 @@ LoadVcf::LoadVcf(const std::string & filename)
 	{
 		throw std::logic_error("Unable to read from VCF file: " + filename);
 	}
-	
-	
+
+
 	// walkabout header
 	while(this->stream.next())
 	{
 		Reader::Current line = this->stream.line();
-		
+
 		// check if last header line reached
 		if (line.size() > 6 && std::string(line, 6) == header[0])
 		{
@@ -57,19 +57,19 @@ LoadVcf::LoadVcf(const std::string & filename)
 			bool   error = false;
 			bool   check[ header_fields ];
 			size_t i = 0;
-			
+
 			// look for required fields
-			
+
 			while (line.split())
 			{
 				check[i] = (header[i] == line.field().str());
-				
+
 				if (++i == header_fields)
 				{
 					break;
 				}
 			}
-			
+
 			for (i = 0; i < header_fields; ++i)
 			{
 				if (!check[i])
@@ -78,42 +78,42 @@ LoadVcf::LoadVcf(const std::string & filename)
 					error = true;
 				}
 			}
-			
+
 			if (error)
 			{
 				throw std::logic_error("Missing fields in VCF file: " + filename + oss.str());
 			}
-			
+
 			// parse sample
-			
+
 			std::set<std::string> unique;
-			
+
 			while (line.split())
 			{
 				Sample S;
-				
+
 				S.label = line.field().str();
 				S.phase = true;
-				
+
 				unique.insert(S.label);
 				this->sample.push_back(std::move(S));
 			}
-			
+
 			if (this->sample.size() != unique.size())
 			{
 				throw std::logic_error("Duplicate sample ID detected in VCF file: " + filename);
 			}
-			
+
 			break;
 		}
-		
+
 		// check if end of header reached before stopping
 		if (line[0] != '#')
 		{
 			throw std::logic_error("Invalid header detected in VCF file: " + filename);
 		}
 	}
-	
+
 	this->good = true;
 }
 
@@ -131,25 +131,25 @@ bool LoadVcf::next()
 bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 {
 	Reader::Current line = this->stream.line();
-	
+
 	int         chr = -1;
 	size_t      pos = 0, last_pos = 0;
 	std::string label;
 	bool        ref = false, alt = false;
-	
+
 	std::string allele_ref;
 	std::string allele_alt;
 	size_t count = 0;
-	
+
 	bool anc = false;
-	
+
 	Marker M;
-	
+
 	// walkabout
 	while (line.split())
 	{
 		Reader::Current field = line.field();
-		
+
 		switch (field.number)
 		{
 			case 0: // CHROM
@@ -160,21 +160,28 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 						(tmp[1] == 'h' || tmp[1] == 'H') &&
 						(tmp[2] == 'r' || tmp[2] == 'R'))
 				{
-					char * ptr = field;;
-					char * err;
-					float  val = std::strtof(&ptr[3], &err);
-					if (*err != '\0')
-						throw std::invalid_argument("Cannot parse chromosome identifier");
-					chr = static_cast<int>(val);
+					if (tmp[3] == 'X')
+					{
+						chr = 23;
+					}
+					else
+					{
+						char * ptr = field;
+						char * err;
+						float  val = std::strtof(&ptr[3], &err);
+						if (*err != '\0')
+							throw std::invalid_argument("Cannot parse chromosome identifier");
+						chr = static_cast<int>(val);
+					}
 				}
 				else
 					chr = field.convert<int>();
-				
+
 				if (this->filter.chromosome != -1 && this->filter.chromosome != chr)
 				{
 					return false;
 				}
-				
+
 				if (this->chrom_avail)
 				{
 					if (this->chrom_value != chr)
@@ -192,7 +199,7 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 			case 1: // POSITION
 			{
 				pos = field.convert<size_t>();
-				
+
 				if (this->filter.position_beg < this->filter.position_end)
 				{
 					if (pos < this->filter.position_beg)
@@ -205,18 +212,18 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 						return false;
 					}
 				}
-				
+
 				if (pos <= last_pos)
 				{
 					throw std::string("Invalid position on line " + std::to_string(line.number));
 				}
-				
+
 				if (this->has_ancestral)
 				{
 					if (this->ancestral[chr].count(pos) != 0)
 						anc = true;
 				}
-				
+
 				last_pos = pos;
 				break;
 			}
@@ -229,21 +236,21 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 			{
 				ref = (field.size() == 1);
 				allele_ref = field.str();
-				
+
 				if (this->filter.remove_missing && field[0] == '.')
 				{
 					return false;
 				}
 				if (allele_ref.find(',') != std::string::npos)
 					return false;
-				
+
 				break;
 			}
 			case 4: // ALT
 			{
 				alt = (field.size() == 1);
 				allele_alt = field.str();
-				
+
 				if (this->filter.remove_missing && field[0] == '.')
 				{
 					return false;
@@ -254,7 +261,7 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 				}
 				if (allele_alt.find(',') != std::string::npos)
 					return false;
-				
+
 				if (anc)
 				{
 					std::string & allele_anc = this->ancestral[chr][pos];
@@ -266,7 +273,7 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 						anc = false;
 					}
 				}
-				
+
 				break;
 			}
 			case 5: // QUAL
@@ -312,37 +319,37 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 				do
 				{
 					Reader::Current g = line.field();
-					
+
 					if (g.size() < 3 || (g[1] != '/' && g[1] != '|'))
 					{
 						throw std::runtime_error("Invalid genotype on line " + std::to_string(line.number) + ", field " + std::to_string(g.number) + ":\n" + g.str());
 					}
-					
+
 					char c0 = g[0];
 					char c1 = g[2];
 					bool ph = (g[1] == '|');
-					
+
 					if (anc) // flip
 					{
 						c0 = (g[0] == '0')? '1': (g[0] == '1')? '0': g[0];
 						c1 = (g[2] == '0')? '1': (g[2] == '1')? '0': g[2];
 					}
-					
+
 					const gen_t gt = make_genotype(c0, c1, ph);
-					
+
 					// allele and genotype counter
 					M.count(gt);
-					
+
 					// insert genotype into buffer
 					buffer.insert(gt);
-					
+
 					// determine phasing
 					if (!is_genotype<G_>(gt) && !ph && this->sample.at(count).phase)
 					{
 						this->sample.at(count).phase = false;
 					}
-					
-					
+
+
 					++count;
 				}
 				while (line.split());
@@ -350,44 +357,44 @@ bool LoadVcf::parse(Gen::Grid::Make & buffer, const Gen::Map & gmap)
 			}
 		}
 	}
-	
+
 	if (count != this->sample.size())
 	{
 		throw std::runtime_error("Unexpected number of genotypes on line " + std::to_string(line.number) +
 								 "\n Expected: " + std::to_string(this->sample.size()) +
 								 "\n Detected: " + std::to_string(count));
 	}
-	
+
 	if (!buffer.good)
 	{
 		throw std::runtime_error("Unexpected buffer error");
 	}
-	
-	
+
+
 	M.label = std::move(label);
 	M.chromosome = chr;
 	M.position   = pos;
-	
+
 	if (anc)
 		M.allele.parse(allele_alt + "," + allele_ref); // flip
 	else
 		M.allele.parse(allele_ref + "," + allele_alt);
-	
-	
+
+
 	// Approximate rate and distance
-	
+
 	Map::Element mapped = gmap.get(chr, pos);
-	
+
 	if (!mapped.valid())
 	{
 		throw std::invalid_argument("Invalid genetic map");
 	}
-	
+
 	M.rec_rate = mapped.rate;
 	M.gen_dist = mapped.dist;
-	
+
 	this->marker.push_back(std::move(M));
-	
+
 	return true;
 }
 
@@ -402,4 +409,3 @@ int LoadVcf::chromosome() const
 	}
 	return this->chrom_value;
 }
-
